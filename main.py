@@ -337,10 +337,10 @@ def train(
     
     if save_model:
         try:
-            agent.save_model('./snake.pth')
+            agent.save_model(MODEL_PATH)
             print("Model saved")
-        except:
-            print("Model not saved")
+        except Exception as e:
+            print(f"Model not saved. Error: {e}")
     plt.show()
     pygame.quit()
     return
