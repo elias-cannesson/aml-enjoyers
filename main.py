@@ -83,7 +83,7 @@ MOVE_STRAIGHT = [1, 0, 0]
 MOVE_LEFT = [0, 1, 0]
 MOVE_RIGHT = [0, 0, 1]
 
-
+MODEL_PATH = './snake.pth'
 START = False
 
 BLOCK_SIZE = 50
@@ -100,12 +100,12 @@ EPS_START = 0.99
 EPS_END = 0.0001
 EPS_DECAY = 0.992
 TARGET_UPDATE = 200
-LR = 0.001
+LR = 0.0005
 LR_DECAY = 0.999
 LR_MIN = 0.0001
 
 MEMORY_SIZE = 300000
-EPOCHS = 500
+EPOCHS = 400
 
 ACTION_SIZE = 3
 STATE_SIZE = 11
@@ -173,6 +173,8 @@ def plot_bar_graph(
 def train(
     seed: Optional[Any] = 4567,
     d: Optional[int] = 1,
+    load_model: Optional[bool] = False,
+    save_model: Optional[bool] = False
 ):
     global START
     print("training...")
@@ -187,7 +189,7 @@ def train(
         agent = Agent(state_size=STATE_SIZE, action_size=ACTION_SIZE, hidden_size=HIDDEN_SIZE,
                         lr=LR, gamma=GAMMA, epsilon=EPS_START, batch_size=BATCH_SIZE,
                          memory_size=MEMORY_SIZE,update_every=TARGET_UPDATE,
-                          device='cpu', seed=seed,
+                          device='cpu', seed=seed, load_model=load_model,
                          epsilon_decay=EPS_DECAY, epsilon_min=EPS_END)
                         
         
@@ -275,6 +277,13 @@ def train(
 
             if max_score == 100:
                 break
+
+            # if epoch == 300:
+            #     d = 3
+            #     window = pygame.display.set_mode(BOUNDS)
+            #     pygame.display.set_caption("Snake")
+
+            #     font = pygame.font.SysFont("comicsansms", 20)   
                 
             if epoch % 15 == 0:
                 print(f"epoch: {epoch}, score: {score}, steps: {steps}, total reward: {total_reward}")
@@ -325,8 +334,13 @@ def train(
                         title='Direction counts',
                         xlabel='Epochs',
                         ylabel='Direction Counts')
-
-
+    
+    if save_model:
+        try:
+            agent.save_model('./snake.pth')
+            print("Model saved")
+        except:
+            print("Model not saved")
     plt.show()
     pygame.quit()
     return
@@ -335,10 +349,12 @@ def train(
 def main(
     func: Optional[str] = 'train',
     d: Optional[int] = 0,
+    load_model: Optional[bool] = False,
+    save_model: Optional[bool] = False
 ):
     global START
     if func == 'train':
-        train(d=d)
+        train(d=d, load_model=load_model, save_model=save_model)
     pygame.init()
     p = 0
     while True:
@@ -436,22 +452,69 @@ def main(
     pygame.quit()
     return
 
+def print_program_usage():
+    # incllude -e flag which can take a float value between 0-1
+    print("Usage: python snake.py [-t|-l|-p] [-d 0|1|2|3] [-s model_path] \n"
+          "[-e (value btwn 0 and 1)] [-ed (value btwn 0 and 1)] [-lr (value btwn 0 and 1)]")
+    print("Options:")
+    print("-t: train model")
+    print("-l: load model")
+    print("-s <model_path>: save model to model path")
+    print("-p: play game")
+    print("-d: display mode")
+    print("-e: epsilon value (float between 0 and 1) (default is 0.99)")
+    print("-ed: epsilon decay value (float between 0 and 1) (default is 0.999)")
+    print("-lr: learning rate (float between 0 and 1) (default is 0.001)")
+    print("0: no display")
+    print("1: display snake game")
+    print("2: display graphs")
+    print("3: display snake game and graphs")
 
 if __name__ == '__main__':
-
     try:
-        cat = 'train'
-        d = 0
         if len(sys.argv) > 1:
-            cat = sys.argv[1]
-            if len(sys.argv) > 2:
-                d = int(sys.argv[2])
-        if cat == 'train':
-            main(func='train', d=d)
-        elif cat == 'play':
-            main(func='play', d=d)
-        else:
-            main('train')
+            # parse through args, where -t indicates
+            # user wants to train model, -l indicates
+            # the user wants to load a saved model,
+            # -p indicates user wants to play game,
+            # and -d followed by 0, 1, 2, or 3
+            # indicates value of d
+
+            # default is to train model
+            func = 'train'
+            load_model = False
+            save_model = False
+            d = 0
+            if '-t' in sys.argv and '-p' in sys.argv:
+                print("Please only choose one of the following: -t for train, -p for play")
+                print_program_usage()
+                sys.exit(1)
+            
+            if '-h' in sys.argv or '--help' in sys.argv:
+                print_program_usage()
+                sys.exit(1)
+
+            for i in range(1, len(sys.argv)):
+                if sys.argv[i] == '-t':
+                    func = 'train'
+                elif sys.argv[i] == '-l':
+                    load_model = True
+                elif sys.argv[i] == '-p':
+                    func = 'play'
+                elif sys.argv[i] == '-d':
+                    d = int(sys.argv[i + 1])
+                elif sys.argv[i] == '-e':
+                    EPS_START = float(sys.argv[i + 1])
+                elif sys.argv[i] == '-ed':
+                    EPS_DECAY = float(sys.argv[i + 1])
+                elif sys.argv[i] == '-lr':
+                    LR = float(sys.argv[i + 1])
+                elif sys.argv[i] == '-s':
+                    save_model = True
+                    MODEL_PATH = sys.argv[i + 1]
+            
+            main(func=func, d=d, load_model=load_model, save_model=save_model)
+
     except Exception as e:
         print("An error occurred: ", e)
         print(format_exc())

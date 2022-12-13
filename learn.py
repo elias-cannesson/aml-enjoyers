@@ -73,11 +73,6 @@ class ReplayBuffer():
     ) -> Tuple:
         sample1 = random.sample(self.memory, batch_size)
         return sample1
-    
-    def cleanup(self):
-        if len(self.memory) > ClEANUP_SIZE:
-            for i in range(ClEANUP_SIZE):
-                self.memory.popleft()
 
     def __len__(self):
         return len(self.memory)
@@ -126,7 +121,8 @@ class Agent:
         device: str, # device to use for training, either 'cpu' or 'cuda'
         seed: Any, # random seed,
         epsilon_decay: float,
-        epsilon_min: float
+        epsilon_min: float,
+        load_model: bool = False
     ):
         self.state_size = state_size 
         self.action_size = action_size
@@ -148,9 +144,13 @@ class Agent:
         self.seed = random.seed(seed)
 
         # Q-Networks to approximate Q-Value function for the given state
-        self.qnetwork_local = DQN(state_size, action_size, hidden_size, seed)
+        if load_model:
+            self.qnetwork_local = DQN(state_size, action_size, hidden_size, seed)
+            self.qnetwork_local.load_state_dict(torch.load("snake.pth"))
+        else:
+            self.qnetwork_local = DQN(state_size, action_size, hidden_size, seed)
         self.qnetwork_target = DQN(state_size, action_size, hidden_size, seed)
-        self.qnetwork_target.load_state_dict(self.qnetwork_local.state_dict())
+        # self.qnetwork_target.load_state_dict(self.qnetwork_local.state_dict())
     
 
         # Optimizer to update the weights of the local network via stochastic gradient descent
