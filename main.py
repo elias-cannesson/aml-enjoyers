@@ -98,18 +98,19 @@ EPS_STEPS = 200
 
 EPS_START = 0.99
 EPS_END = 0.0001
-EPS_DECAY = 0.992
+EPS_DECAY = 0.98
 TARGET_UPDATE = 200
-LR = 0.0005
+LR = 0.001
 LR_DECAY = 0.999
 LR_MIN = 0.0001
 
 MEMORY_SIZE = 300000
 EPOCHS = 400
-
 ACTION_SIZE = 3
 STATE_SIZE = 11
-HIDDEN_SIZE = 256
+# STATE_SIZE = 11 + (WIDTH // BLOCK_SIZE) * (HEIGHT // BLOCK_SIZE)
+# STATE_SIZE = 7
+HIDDEN_SIZE = 3136
 
 CLEAN = 10000
 
@@ -187,12 +188,11 @@ def train(
             font = pygame.font.SysFont("comicsansms", 20)
 
         agent = Agent(state_size=STATE_SIZE, action_size=ACTION_SIZE, hidden_size=HIDDEN_SIZE,
-                        lr=LR, gamma=GAMMA, epsilon=EPS_START, batch_size=BATCH_SIZE,
-                         memory_size=MEMORY_SIZE,update_every=TARGET_UPDATE,
-                          device='cpu', seed=seed, load_model=load_model,
-                         epsilon_decay=EPS_DECAY, epsilon_min=EPS_END)
+                      lr=LR, gamma=GAMMA, epsilon=EPS_START, batch_size=BATCH_SIZE,
+                      memory_size=MEMORY_SIZE,update_every=TARGET_UPDATE, device='cpu', 
+                      seed=seed, load_model=load_model, epsilon_decay=EPS_DECAY, 
+                      epsilon_min=EPS_END)
                         
-        
         snake_skeleton = Snake(w=WIDTH,h=HEIGHT, color=RED,
                                 csize=BLOCK_SIZE) 
         
@@ -269,7 +269,7 @@ def train(
                     window.fill((10, 10, 10))
                     window.blit(text, (WIDTH - 100, 10))
                     window.blit(text2, (WIDTH - 100, 50))
-                    snake_skeleton.draw(window, action)
+                    snake_skeleton.draw(window)
                     pygame.display.flip()
             
             max_reward = max(max_reward, total_reward)
@@ -301,7 +301,7 @@ def train(
             if d == 3:
                 plt.pause(0.001)
                 window.fill((10, 10, 10))
-                snake_skeleton.draw(window, action)
+                snake_skeleton.draw(window)
                 pygame.display.flip()
 
                 ax[0].plot(epoch, score, 'ro', markersize=1)
@@ -357,6 +357,7 @@ def main(
         train(d=d, load_model=load_model, save_model=save_model)
     pygame.init()
     p = 0
+    print("Enter 'start' or 'quit'")
     while True:
         line = input(f"Enter a command: ")
         if line == "quit":
@@ -403,40 +404,14 @@ def main(
                 # check if game over
                 cont = snake_skeleton.play(direction=direction)
 
-                state = snake_skeleton.get_state()
-                """
-                state = [
-                    1: danger straight,
-                    1: danger right,
-                    1: danger left,
+                # state = snake_skeleton.get_state_v2()
 
-                    1: food straight,
-                    1: food left,
-                    1: food right
-
-                    1: move right,
-                    1: move left,
-                    1: move down,
-                    1: move up
-                ]
-                """
-                # print state in this format
+                # # print state in this format
                 
-                print(
-                    f"""state:
-                    danger straight: {state[0]}
-                    danger right: {state[1]}
-                    danger left: {state[2]}
-                    food straight: {state[3]}
-                    food left: {state[4]}
-                    food right: {state[5]}
-                    move right: {state[6]}
-                    move left: {state[7]}
-                    move down: {state[8]}
-                    move up: {state[9]}
-                     """
-                )
-                
+                # print(
+                #     f"state: {state}, direction: {direction}, score: {snake_skeleton.score}"
+                # )
+                # sys.exit()
 
                 if not cont:
                     print("game over")
@@ -455,7 +430,8 @@ def main(
 def print_program_usage():
     # incllude -e flag which can take a float value between 0-1
     print("Usage: python snake.py [-t|-l|-p] [-d 0|1|2|3] [-s model_path] \n"
-          "[-e (value btwn 0 and 1)] [-ed (value btwn 0 and 1)] [-lr (value btwn 0 and 1)]")
+          "[-e (value btwn 0 and 1)] [-ed (value btwn 0 and 1)] [-lr (value btwn 0 and 1)]\n"
+          "[-ep (epochs for training: any positive integer)]")
     print("Options:")
     print("-t: train model")
     print("-l: load model")
@@ -465,6 +441,7 @@ def print_program_usage():
     print("-e: epsilon value (float between 0 and 1) (default is 0.99)")
     print("-ed: epsilon decay value (float between 0 and 1) (default is 0.999)")
     print("-lr: learning rate (float between 0 and 1) (default is 0.001)")
+    print(f"-ep: epochs (any positive integer) (default is {EPOCHS})")
     print("0: no display")
     print("1: display snake game")
     print("2: display graphs")
@@ -512,6 +489,8 @@ if __name__ == '__main__':
                 elif sys.argv[i] == '-s':
                     save_model = True
                     MODEL_PATH = sys.argv[i + 1]
+                elif sys.argv[i] == '-ep':
+                    EPOCHS = int(sys.argv[i + 1])
             
             main(func=func, d=d, load_model=load_model, save_model=save_model)
 

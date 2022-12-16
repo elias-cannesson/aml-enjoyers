@@ -27,7 +27,6 @@ MOVE_STRAIGHT = [1, 0, 0]
 MOVE_LEFT = [0, 1, 0]
 MOVE_RIGHT = [0, 0, 1]
 
-ClEANUP_SIZE = 2000
 
 """
 Training:
@@ -79,6 +78,20 @@ class ReplayBuffer():
     
     def get(self):
         return self.memory
+
+# class PriorityReplayBuffer(ReplayBuffer):
+#     def __init__(self, size: int) -> None:
+#         self.memory = deque([], maxlen=size)
+    
+#     # implement priority sampling
+#     def sample(
+#         self,
+#         batch_size: int
+#     ) -> Tuple:
+        
+
+    
+    
     
 # nn.Module class:
 # https://pytorch.org/docs/stable/generated/torch.nn.Module.html
@@ -94,12 +107,33 @@ class DQN(nn.Module):
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         # build network that maps states to actions
-
         x = F.relu(self.fc1(state))
         # second hidden layer with relu activation
         x = F.relu(self.fc2(x))
         # third hidden layer with Linear activation
         x = self.fc3(x)
+        return x
+
+# build a deep q network with three hidden layers
+class DeepDQN(nn.Module):
+    def __init__(self, state_size: int, action_size: int, 
+                hidden_size: int, seed: int) -> None:
+        super(DeepDQN, self).__init__()
+        self.seed = torch.manual_seed(seed)
+        self.fc1 = nn.Linear(state_size, hidden_size)
+        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        self.fc3 = nn.Linear(hidden_size, hidden_size)
+        self.fc4 = nn.Linear(hidden_size, action_size)
+
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
+        # build network that maps states to actions
+        x = F.relu(self.fc1(state))
+        # second hidden layer with relu activation
+        x = F.relu(self.fc2(x))
+        # third hidden layer with relu activation
+        x = F.relu(self.fc3(x))
+        # fourth hidden layer with Linear activation
+        x = self.fc4(x)
         return x
 
 
@@ -144,12 +178,11 @@ class Agent:
         self.seed = random.seed(seed)
 
         # Q-Networks to approximate Q-Value function for the given state
+        self.qnetwork_local = DeepDQN(state_size, action_size, hidden_size, seed)
         if load_model:
-            self.qnetwork_local = DQN(state_size, action_size, hidden_size, seed)
             self.qnetwork_local.load_state_dict(torch.load("snake.pth"))
-        else:
-            self.qnetwork_local = DQN(state_size, action_size, hidden_size, seed)
-        self.qnetwork_target = DQN(state_size, action_size, hidden_size, seed)
+        
+        self.qnetwork_target = DeepDQN(state_size, action_size, hidden_size, seed)
         # self.qnetwork_target.load_state_dict(self.qnetwork_local.state_dict())
     
 

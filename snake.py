@@ -73,7 +73,8 @@ class Snake():
 
         self.color = color
 
-        self.init_easy_food()
+        #self.init_easy_food()
+        self.new_food()
         
     def reset(self):
         self.size = 3
@@ -222,7 +223,6 @@ class Snake():
             if self.has_collided(right_block):
                 state[2] = 1
 
-
         # food left, right, up, down
         state[3] = 1 if self.food.x < self.head.x else 0
         state[4] = 1 if self.food.x > self.head.x else 0
@@ -236,26 +236,119 @@ class Snake():
         state[10] = self.direction == UP
         return torch.tensor(np.array(state, dtype=int), dtype=torch.float32)
 
-    # def get_state(self):
-    #     # make a grid of self.csize by width and height
-    #     # if the snake's body is in that cell, make it 1
-    #     # if the food is in that cell, make it 1
-    #     # else 0
-    #     # concatenate another tensor of the direction the snake is moving
-    #     # if bound is near snake, make it 1
-    #     # else 0
 
-    #     # make a grid of self.csize by width and height
-    #     grid = torch.zeros((self.width // self.csize, self.height // self.csize))
-    #     # if the snake's body is in that cell, make it 1
-    #     for cell in self.cells:
-    #         grid[cell.x // self.csize, cell.y // self.csize] = 1
-    #     # if the food is in that cell, make it 1
-    #     grid[self.food.x // self.csize, self.food.y // self.csize] = 1
+    def get_state_v2(self):
+        dim = 11 + (self.w // self.csize) * (self.h // self.csize)
+        state = [ 0 ] * dim
 
-    #     # concatenate another tensor of the direction the snake is moving
-    #     direction = torch.zeros(4)
-    #     direction[self.direction] = 1
+        left_block = Point(self.head.x - self.csize, self.head.y)
+        right_block = Point(self.head.x + self.csize, self.head.y)
+        up_block = Point(self.head.x, self.head.y - self.csize)
+        down_block = Point(self.head.x, self.head.y + self.csize)
+
+        # danger straight, right, left
+        if self.direction == RIGHT:
+            if self.has_collided(right_block):
+                state[0] = 1
+            if self.has_collided(down_block):
+                state[1] = 1
+            if self.has_collided(up_block):
+                state[2] = 1
+        elif self.direction == LEFT:
+            if self.has_collided(left_block):
+                state[0] = 1
+            if self.has_collided(up_block):
+                state[1] = 1
+            if self.has_collided(down_block):
+                state[2] = 1
+        elif self.direction == UP:
+            if self.has_collided(up_block):
+                state[0] = 1
+            if self.has_collided(right_block):
+                state[1] = 1
+            if self.has_collided(left_block):
+                state[2] = 1
+        elif self.direction == DOWN:
+            if self.has_collided(down_block):
+                state[0] = 1
+            if self.has_collided(left_block):
+                state[1] = 1
+            if self.has_collided(right_block):
+                state[2] = 1
+
+
+        # food left, right, up, down
+        state[3] = 1 if self.food.x < self.head.x else 0
+        state[4] = 1 if self.food.x > self.head.x else 0
+        state[5] = 1 if self.food.y < self.head.y else 0
+        state[6] = 1 if self.food.y > self.head.y else 0
+
+        # moving right
+        state[7] = self.direction == RIGHT
+        state[8] = self.direction == DOWN
+        state[9] = self.direction == LEFT
+        state[10] = self.direction == UP
+
+        # make a grid of the board of width self.w // self.csize and self.h // self.csize, where the snake is 1, food is 1, and empty is 0
+        for i in range(0, self.w, self.csize):
+            for j in range(0, self.h, self.csize):
+                if Point(i, j) in self.cells:
+                    state[11 + (i // self.csize) + (j // self.csize) * (self.w // self.csize)] = 1
+                elif self.food.x == i and self.food.y == j:
+                    state[11 + (i // self.csize) + (j // self.csize) * (self.w // self.csize)] = 1
+                else:
+                    state[11 + (i // self.csize) + (j // self.csize) * (self.w // self.csize)] = 0
+
+        
+        return torch.tensor(np.array(state, dtype=int), dtype=torch.float32)
+
+    def get_state_v3(self):
+        state = [ 0 ] * 7
+
+        left_block = Point(self.head.x - self.csize, self.head.y)
+        right_block = Point(self.head.x + self.csize, self.head.y)
+        up_block = Point(self.head.x, self.head.y - self.csize)
+        down_block = Point(self.head.x, self.head.y + self.csize)
+
+        # danger straight, right, left
+        if self.direction == RIGHT:
+            if self.has_collided(right_block):
+                state[0] = 1
+            if self.has_collided(down_block):
+                state[1] = 1
+            if self.has_collided(up_block):
+                state[2] = 1
+        elif self.direction == LEFT:
+            if self.has_collided(left_block):
+                state[0] = 1
+            if self.has_collided(up_block):
+                state[1] = 1
+            if self.has_collided(down_block):
+                state[2] = 1
+        elif self.direction == UP:
+            if self.has_collided(up_block):
+                state[0] = 1
+            if self.has_collided(right_block):
+                state[1] = 1
+            if self.has_collided(left_block):
+                state[2] = 1
+        elif self.direction == DOWN:
+            if self.has_collided(down_block):
+                state[0] = 1
+            if self.has_collided(left_block):
+                state[1] = 1
+            if self.has_collided(right_block):
+                state[2] = 1
+
+
+        # food left, right, up, down
+        state[3] = 1 if self.food.x < self.head.x else 0
+        state[4] = 1 if self.food.x > self.head.x else 0
+        state[5] = 1 if self.food.y < self.head.y else 0
+        state[6] = 1 if self.food.y > self.head.y else 0
+
+        return torch.tensor(np.array(state, dtype=int), dtype=torch.float32)
+
 
 
 
@@ -263,19 +356,12 @@ class Snake():
         return self.score
     
     def draw(self, 
-        game: pygame.Surface,
-        actions: torch.Tensor
+        game: pygame.Surface
     ):
         pygame.draw.rect(game, WHITE, (self.head.x, self.head.y, self.csize, self.csize))
         for i, cell in enumerate(self.cells[1:]):
             pygame.draw.rect(game, self.color, (cell.x, cell.y, self.csize, self.csize))
         pygame.draw.rect(game, (255, 255, 0), (self.food.x, self.food.y, self.csize, self.csize))
-        
-        # # draw the values of each action
-        # for i, action in enumerate(actions):
-        #     font = pygame.font.SysFont('Arial', 20)
-        #     text = font.render(str(action), True, (255, 255, 255))
-        #     game.blit(text, (self.head.x + 10, self.head.y + 10 + (i * 20)))
 
     
     
