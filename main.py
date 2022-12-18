@@ -98,19 +98,20 @@ EPS_STEPS = 200
 
 EPS_START = 0.99
 EPS_END = 0.0001
-EPS_DECAY = 0.98
+EPS_DECAY = 0.992
 TARGET_UPDATE = 200
 LR = 0.001
 LR_DECAY = 0.999
 LR_MIN = 0.0001
 
 MEMORY_SIZE = 300000
-EPOCHS = 400
+EPOCHS = 600
+
 ACTION_SIZE = 3
 STATE_SIZE = 11
+HIDDEN_SIZE = 256
 # STATE_SIZE = 11 + (WIDTH // BLOCK_SIZE) * (HEIGHT // BLOCK_SIZE)
 # STATE_SIZE = 7
-HIDDEN_SIZE = 3136
 
 CLEAN = 10000
 
@@ -431,21 +432,28 @@ def print_program_usage():
     # incllude -e flag which can take a float value between 0-1
     print("Usage: python snake.py [-t|-l|-p] [-d 0|1|2|3] [-s model_path] \n"
           "[-e (value btwn 0 and 1)] [-ed (value btwn 0 and 1)] [-lr (value btwn 0 and 1)]\n"
-          "[-ep (epochs for training: any positive integer)]")
+          "[-ep (epochs for training: any positive integer)] [-hs (hidden size)]\n"
+          "[-g (gamma / discount-factor for future actions)] [-bs (batch size of training data)]")
     print("Options:")
     print("-t: train model")
     print("-l: load model")
     print("-s <model_path>: save model to model path")
     print("-p: play game")
-    print("-d: display mode")
+    
     print("-e: epsilon value (float between 0 and 1) (default is 0.99)")
     print("-ed: epsilon decay value (float between 0 and 1) (default is 0.999)")
     print("-lr: learning rate (float between 0 and 1) (default is 0.001)")
     print(f"-ep: epochs (any positive integer) (default is {EPOCHS})")
+    print(f"-hs: hidden size (any positive integer) (default is {HIDDEN_SIZE})")
+    print(f"-g: gamma (float between 0 and 1) (default is {GAMMA})")
+    print(f"-bs: batch size (any positive integer) (default is {BATCH_SIZE})")
+
+    print("-d: display mode")
     print("0: no display")
     print("1: display snake game")
     print("2: display graphs")
     print("3: display snake game and graphs")
+    
 
 if __name__ == '__main__':
     try:
@@ -491,6 +499,12 @@ if __name__ == '__main__':
                     MODEL_PATH = sys.argv[i + 1]
                 elif sys.argv[i] == '-ep':
                     EPOCHS = int(sys.argv[i + 1])
+                elif sys.argv[i] == '-hs':
+                    HIDDEN_SIZE = int(sys.argv[i + 1])
+                elif sys.argv[i] == '-g':
+                    GAMMA = float(sys.argv[i + 1])
+                elif sys.argv[i] == '-bs':
+                    BATCH_SIZE = int(sys.argv[i + 1])
             
             main(func=func, d=d, load_model=load_model, save_model=save_model)
 

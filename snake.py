@@ -73,8 +73,8 @@ class Snake():
 
         self.color = color
 
-        #self.init_easy_food()
-        self.new_food()
+        self.init_easy_food()
+        #self.new_food()
         
     def reset(self):
         self.size = 3

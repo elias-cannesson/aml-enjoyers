@@ -178,11 +178,11 @@ class Agent:
         self.seed = random.seed(seed)
 
         # Q-Networks to approximate Q-Value function for the given state
-        self.qnetwork_local = DeepDQN(state_size, action_size, hidden_size, seed)
+        self.qnetwork_local = DQN(state_size, action_size, hidden_size, seed)
         if load_model:
             self.qnetwork_local.load_state_dict(torch.load("snake.pth"))
         
-        self.qnetwork_target = DeepDQN(state_size, action_size, hidden_size, seed)
+        self.qnetwork_target = DQN(state_size, action_size, hidden_size, seed)
         # self.qnetwork_target.load_state_dict(self.qnetwork_local.state_dict())
     
 
