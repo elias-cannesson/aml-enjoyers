@@ -91,7 +91,7 @@ BOUNDS = (1000, 800)
 WIDTH = BOUNDS[0]
 HEIGHT = BOUNDS[1]
 
-BATCH_SIZE = 1000
+BATCH_SIZE = 2500
 GAMMA = 0.99
 
 EPS_STEPS = 200
@@ -447,6 +447,7 @@ def print_program_usage():
     print(f"-hs: hidden size (any positive integer) (default is {HIDDEN_SIZE})")
     print(f"-g: gamma (float between 0 and 1) (default is {GAMMA})")
     print(f"-bs: batch size (any positive integer) (default is {BATCH_SIZE})")
+    print(f"-tu: target update (any positive integer) (default is {TARGET_UPDATE})")
 
     print("-d: display mode")
     print("0: no display")
@@ -505,6 +506,8 @@ if __name__ == '__main__':
                     GAMMA = float(sys.argv[i + 1])
                 elif sys.argv[i] == '-bs':
                     BATCH_SIZE = int(sys.argv[i + 1])
+                elif sys.argv[i] == '-tu':
+                    TARGET_UPDATE = int(sys.argv[i + 1])
             
             main(func=func, d=d, load_model=load_model, save_model=save_model)
 
