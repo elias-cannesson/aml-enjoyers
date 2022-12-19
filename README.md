@@ -25,11 +25,11 @@ Options:
     -e: epsilon value (float between 0 and 1) (default is 0.99)  
     -ed: epsilon decay value (float between 0 and 1) (default is 0.999)  
     -lr: learning rate (float between 0 and 1) (default is 0.001)  
-    -ep: epochs (any positive integer) (default is {EPOCHS})  
-    -hs: hidden size (any positive integer) (default is {HIDDEN_SIZE})  
-    -g: gamma (float between 0 and 1) (default is {GAMMA})  
-    -bs: batch size (any positive integer) (default is {BATCH_SIZE})  
-    -tu: target update (any positive integer) (default is {TARGET_UPDATE})  
+    -ep: epochs (any positive integer)  
+    -hs: hidden size (any positive integer)  
+    -g: gamma (float between 0 and 1)  
+    -bs: batch size (any positive integer)  
+    -tu: target update (any positive integer)    
     -d: display mode  
     0: no display  
     1: display snake game  
