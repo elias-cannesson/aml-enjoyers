@@ -9,12 +9,24 @@ import torch
 from torch import nn
 from torch import optim
 import torch.nn.functional as F
-import torchvision.transforms as T
 import numpy as np
+import copy
 
 from collections import namedtuple, deque
 
 from snake import Snake
+
+import time
+
+RIGHT = 0
+DOWN = 1
+LEFT = 2
+UP = 3
+
+MOVE_STRAIGHT = [1, 0, 0]
+MOVE_LEFT = [0, 1, 0]
+MOVE_RIGHT = [0, 0, 1]
+
 
 """
 Training:
@@ -39,7 +51,6 @@ __all__ = ["ReplayBuffer", "Agent"]
 
 Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward', 'done'))
 
-
 class ReplayBuffer():
     def __init__(self, size: int) -> None:
         self.memory = deque([], maxlen=size)
@@ -47,7 +58,7 @@ class ReplayBuffer():
     def add_experience(
         self, 
         state: Union[np.ndarray, torch.Tensor],
-        action: int,
+        action: torch.Tensor,
         next_state: Union[np.ndarray, torch.Tensor],
         reward: torch.Tensor,
         done: int
@@ -58,14 +69,68 @@ class ReplayBuffer():
         self,
         batch_size: int
     ) -> Tuple:
-        return random.sample(self.memory, batch_size)
+        sample1 = random.sample(self.memory, batch_size)
+        return sample1
 
     def __len__(self):
         return len(self.memory)
     
     def get(self):
         return self.memory
+
+class PriorityBuffer():
+    def __init__(self, size: int) -> None:
+        self.memory = deque([], maxlen=size)
+        self.priorities = deque([], maxlen=size)
+        self.eps = 0.001
+        self.alpha = 0.4
     
+    def add_experience(
+        self, 
+        state: Union[np.ndarray, torch.Tensor],
+        action: torch.Tensor,
+        next_state: Union[np.ndarray, torch.Tensor],
+        reward: torch.Tensor,
+        done: int
+    ):
+        self.memory.append(Transition(state, action, next_state, reward, done))
+        self.priorities.append( (abs(reward) + self.eps)**self.alpha ) # add priority
+    
+    def sample(
+        self,
+        batch_size: int
+    ) -> Tuple:
+        # pick a random number 0 <= s <= sum(priorities)
+        # and walk self.priority left to right,
+        # summing up a priority of the current element until the sum is exceeded
+        # and that element is chosen ot be in the batch
+
+        # get probabilities
+        p_sum = sum(self.priorities)
+
+        # walk left to right, summing up priorities
+        # until the sum is exceeded
+        j = 0
+        sample = []
+        for _ in range(batch_size):
+            # get random number
+            s = random.uniform(0, p_sum)
+            su = 0
+            for j in range(len(self.priorities)):
+                su += self.priorities[j]
+                if su >= s:
+                    break
+                # add to sample
+            sample.append(self.memory[j])
+        return sample
+    
+    def __len__(self):
+        return len(self.memory)
+    
+    def get(self):
+        return self.memory
+
+
 # nn.Module class:
 # https://pytorch.org/docs/stable/generated/torch.nn.Module.html
 
@@ -79,36 +144,36 @@ class DQN(nn.Module):
         self.fc3 = nn.Linear(hidden_size, action_size)
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
-        # this method defines the forward pass of the network
-        #print(type(state), state.shape, state)
-        #state = state.view(-1, 11)
-        # first hidden layer with relu activation in order
-        # to introduce non-linearity
-        # input to first hidden layer is state
+        # build network that maps states to actions
         x = F.relu(self.fc1(state))
         # second hidden layer with relu activation
         x = F.relu(self.fc2(x))
-        return self.fc3(x)
+        # third hidden layer with Linear activation
+        x = self.fc3(x)
+        return x
 
-# class DQN(nn.Module):
-#     def __init__(self, state_size: int, action_size: int, 
-#                 hidden_size: int, seed: int) -> None:
-#         super(DQN, self).__init__()
-#         self.seed = torch.manual_seed(seed)
-#         self.fc1 = nn.Linear(state_size, hidden_size)
-#         self.fc2 = nn.Linear(hidden_size, action_size)
+# build a deep q network with three hidden layers
+class DeepDQN(nn.Module):
+    def __init__(self, state_size: int, action_size: int, 
+                hidden_size: int, seed: int) -> None:
+        super(DeepDQN, self).__init__()
+        self.seed = torch.manual_seed(seed)
+        self.fc1 = nn.Linear(state_size, hidden_size)
+        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        self.fc3 = nn.Linear(hidden_size, hidden_size)
+        self.fc4 = nn.Linear(hidden_size, action_size)
 
-#     def forward(self, state: torch.Tensor) -> torch.Tensor:
-#         # this method defines the forward pass of the network
-#         #print(type(state), state.shape, state)
-#         #state = state.view(-1, 11)
-#         # first hidden layer with relu activation in order
-#         # to introduce non-linearity
-#         # input to first hidden layer is state
-#         x = F.relu(self.fc1(state))
-#         # second hidden layer with relu activation
-#         x = self.fc2(x)
-#         return self.fc2(x)
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
+        # build network that maps states to actions
+        x = F.relu(self.fc1(state))
+        # second hidden layer with relu activation
+        x = F.relu(self.fc2(x))
+        # third hidden layer with relu activation
+        x = F.relu(self.fc3(x))
+        # fourth hidden layer with Linear activation
+        x = self.fc4(x)
+        return x
+
 
 
 class Agent:
@@ -121,13 +186,15 @@ class Agent:
         lr: float, # learning rate
         gamma: float, # discount factor
         epsilon: float, # epsilon for epsilon-greedy action selection
-        epsilon_decay: float, # decay rate for epsilon
-        epsilon_min: float, # minimum value of epsilon
+        # minimum value of epsilon
         batch_size: int, # size of the batch
         memory_size: int, # size of the replay buffer
         update_every: int, # how often to update the network
         device: str, # device to use for training, either 'cpu' or 'cuda'
-        seed: Any, # random seed
+        seed: Any, # random seed,
+        epsilon_decay: float,
+        epsilon_min: float,
+        load_model: bool = False
     ):
         self.state_size = state_size 
         self.action_size = action_size
@@ -149,14 +216,24 @@ class Agent:
         self.seed = random.seed(seed)
 
         # Q-Networks to approximate Q-Value function for the given state
-        self.qnetwork_local = DQN(state_size, action_size, hidden_size, seed).to(device)
+        self.qnetwork_local = DQN(state_size, action_size, hidden_size, seed)
+        if load_model:
+            self.qnetwork_local.load_state_dict(torch.load("snake.pth"))
+        
+        self.qnetwork_target = DQN(state_size, action_size, hidden_size, seed)
+        # self.qnetwork_target.load_state_dict(self.qnetwork_local.state_dict())
+    
 
         # Optimizer to update the weights of the local network via stochastic gradient descent
         self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=lr)
         
-        # Replay memory stores the experiences
-        self.memory = ReplayBuffer(memory_size)
-        self.t_step = 0
+        self.PER = False
+        
+        if not self.PER:
+            self.memory = ReplayBuffer(memory_size)
+        else:
+            self.memory = PriorityBuffer(memory_size)
+        self.t_step = 1
 
         self.loss = 0
 
@@ -178,19 +255,21 @@ class Agent:
         with torch.no_grad():
             action_values = self.qnetwork_local(state) # get predictions for all actions
         self.qnetwork_local.train() # set the network back to training mode
-
-        action = [0, 0, 0, 0]
+        action = [0, 0, 0] # straight, left, right
         # epsilon-greedy action selection
+
         if random.random() > self.epsilon:
-            action_values2 = action_values.cpu().data.numpy()
-            action[np.argmax(action_values2)] = 1
+            max_action_value = torch.argmax(action_values)
+            max_action_value = max_action_value.item() # get the index of the highest predicted Q-value
+           # print(action_values)
+            action[max_action_value] = 1
             return action, action_values
             # return np.argmax(action_values.cpu().data.numpy()) 
             # return the action with the highest predicted Q-value
         else:
-            action[random.randint(0, 3)] = 1
+            action[random.randint(0, 2)] = 1
             return action, action_values 
-            # return random.choice(np.arange(self.action_size)) # return a random action
+
 
     def train(
         self
@@ -202,63 +281,108 @@ class Agent:
         if self.t_step == 0:
             if len(self.memory) > self.batch_size:
                 experiences = self.memory.sample(self.batch_size)
-                self.learn_experiences(experiences)
+                self.learn_experiences_v2(experiences, self.batch_size)
 
-
+                
     def replay_experiences(
         self
     ): 
         # train the q agent
         if len(self.memory) > self.batch_size:
             experiences = self.memory.sample(self.batch_size)
+            size = self.batch_size
         else:
             experiences = self.memory.get()
-        
-        self.learn_experiences(experiences)
-
+            size = len(self.memory)
+        self.learn_experiences_v2(experiences, size)
     
-    def learn_experiences(
+
+    def learn_experiences_v2(
         self,
-        experiences: Tuple[torch.Tensor]
+        experiences: Tuple[torch.Tensor, Transition],
+        batch_size: int
     ):  
-        states = [e.state for e in experiences if e is not None]
-        actions = [e.action for e in experiences if e is not None]
-        rewards = [e.reward for e in experiences if e is not None]
-        next_states = [e.next_state for e in experiences if e is not None]
-        done = [e.done for e in experiences if e is not None]
-
-        rewards = torch.tensor(rewards, dtype=torch.float).to(self.device)
-        done = torch.tensor(done, dtype=torch.float).to(self.device)
+    # --------------------------------------------------------------------------------------
+    # convert experiences to tensors to feed to the torch models and optimizers
+        states = []
+        actions = []
+        rewards = []
+        next_states = []
+        done = []
+        for e in experiences:
+            if e is not None:
+                states.append(e.state)
+                action = torch.Tensor(e.action)
+                action = action.type(torch.int64)
+                actions.append(action)
+                rewards.append(e.reward)
+                done.append(e.done)
+                if e.done:
+                    next_states.append(None)
+                else:
+                    next_states.append(e.next_state)
         states = torch.stack(states).to(self.device)
-        next_states = torch.stack(next_states).to(self.device)
         actions = torch.stack(actions).to(self.device)
+        rewards = torch.tensor(rewards, dtype=torch.float).to(self.device)
+    
+    # --------------------------------------------------------------------------------------
+    # get current q values (best action) for all actions in current states 
+    # from the local model
 
-        Q_expected = self.qnetwork_local(states)
-        target = Q_expected.clone()
+        # Current model estimates
+        state_action_values = self.qnetwork_local(states)
         
-        for i in range(len(done)):
+        # best state action values from the current model's estimates
+        max_state_action_values = torch.stack(
+            [torch.max(state_action_values[i]) for i in range(len(state_action_values))]
+        )
 
-            Q_targets = rewards[i]
-            if not done[i]:
-                Q_targets_next = torch.max(self.qnetwork_local(next_states[i]))
-                Q_targets += (self.gamma * Q_targets_next)
+    # --------------------------------------------------------------------------------------
+    # Get max predicted Q values (for next states) from target model
 
-            target[i][torch.argmax(actions[i]).item()] = Q_targets
+        # since we only add a discount Q value for non final states, 
+        # we need to know which states are non final
+        non_final_mask = torch.tensor(
+            tuple(map(lambda s: s is not None, next_states)), 
+            dtype=torch.bool).to(self.device)
+        
+        non_final_next_states = torch.stack(
+            [s for s in next_states if s is not None]
+        ).to(self.device) 
 
-        self.optimizer.zero_grad()
-        # get loss between Q_expected and Q_targets
+        # get the predicted Q values for the next states
+        with torch.no_grad():
+            next_q_values = self.qnetwork_target(non_final_next_states)
+        
+        next_state_values = torch.zeros(batch_size).to(self.device) # initialize to zeros 
+        # (non-final next states will be updated)
+        next_state_values[non_final_mask] = torch.max(next_q_values, dim=1)[0]
+        
 
-        loss = F.l1_loss(Q_expected, target)
-        loss.backward() # backpropagate the loss
+        max_expected_state_action_values = next_state_values * self.gamma
+        max_expected_state_action_values = max_expected_state_action_values + rewards
 
-        self.optimizer.step() # update the weights of the local network
+        try:
+            self.optimizer.zero_grad()
+            loss = F.mse_loss(max_state_action_values, max_expected_state_action_values)
+            loss.backward()
+            self.optimizer.step()
+
+        except RuntimeError as e:
+            print(e)
+            print(format_exc())
+            print("state_action_values: ", state_action_values.squeeze(), len(state_action_values), state_action_values.squeeze().shape)
+            print(f"expected_state_action_values: {max_expected_state_action_values}, {len(max_expected_state_action_values)}, {max_expected_state_action_values.shape}")
+            print("loss: ", loss)
+            sys.exit()
 
         self.loss = loss.item() 
 
         self.epsilon = max(self.epsilon_min, self.epsilon_decay * self.epsilon)
 
-        self.target = target
-        self.Q_expected = Q_expected
+        # update target network every update_every steps (load weights of local to target)
+        if self.t_step % self.update_every == 0:
+            self.qnetwork_target.load_state_dict(self.qnetwork_local.state_dict())
 
 
     def get_loss(self):
@@ -273,6 +397,15 @@ class Agent:
         done: int
     ):
         self.memory.add_experience(state, action, next_state, reward, done)
+
+    
+    # def get_q_values(
+    #     self,
+    #     states: torch.Tensor,
+    #     actions: torch.Tensor,
+    #     rewardS: torch.Tensor,
+    #     done: torch.Tensor
+    # ):
 
 
 
