@@ -394,7 +394,7 @@ def print_program_usage():
           "[-e (value btwn 0 and 1)] [-ed (value btwn 0 and 1)] [-lr (value btwn 0 and 1)]\n"
           "[-ep (epochs for training: any positive integer)] [-hs (hidden size)]\n"
           "[-g (gamma / discount-factor for future actions)] [-bs (batch size of training data)]\n"
-          "[-tu (target update, must be int greater than 0)] [-PER (use prioritized experience replay)]\n")
+          "[-tu (target update, must be int greater than 0)] \n")
 
     print("Options:")
     print("-t: train model")
@@ -410,8 +410,6 @@ def print_program_usage():
     print(f"-g: gamma (float between 0 and 1) (default is {GAMMA})")
     print(f"-bs: batch size (any positive integer) (default is {BATCH_SIZE})")
     print(f"-tu: target update (any positive integer) (default is {TARGET_UPDATE})")
-    print("-PER: use prioritized experience replay")
-
     print("-d: display mode")
     print("0: no display")
     print("1: display snake game")
@@ -471,8 +469,6 @@ if __name__ == '__main__':
                     BATCH_SIZE = int(sys.argv[i + 1])
                 elif sys.argv[i] == '-tu':
                     TARGET_UPDATE = int(sys.argv[i + 1])
-                elif sys.argv[i] == '-PER':
-                    PER = True
             
             main(func=func, d=d, load_model=load_model, save_model=save_model)
 
