@@ -15,7 +15,7 @@ Usage: python snake.py [-t|-l|-p] [-d 0|1|2|3] [-s model_path]
     [-e (value btwn 0 and 1)] [-ed (value btwn 0 and 1)] [-lr (value btwn 0 and 1)]  
     [-ep (epochs for training: any positive integer)] [-hs (hidden size)]  
     [-g (gamma / discount-factor for future actions)] [-bs (batch size of training data)]  
-    [-tu (target update, must be int greater than 0)]  
+    [-tu (target update, must be int greater than 0)] [-... other options]
 
 Options:  
     -t: train model  
