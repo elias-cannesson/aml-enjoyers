@@ -4,6 +4,9 @@
 # Summary
 This project delves into the exploration of the combination of neural networks from Machine Learning, and Q-learning (reinforcement learning) from the concepts of Artificial Intelligence and Game Theory. In this project, we use Deep Q Networks (DQN) to get a two dimensional snake game to play the game successfully. To this end, we developed a snake game in Python using pygame, and made use of Deep Q networks to train an agent to play the game by itself by learning from past experience. We explore the performance of a trained agent ( the snake) playing the original game. 
 
+# How to run the program
+Simply clone the repository, and run the following command according to the command manual to run the program.  
+
 # Program command manual
 Run the main.py file with the parameters specified below, if the options are not specified, it will use the default value.
 Run main.py -h for detailed version of the command manual  
