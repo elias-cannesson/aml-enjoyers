@@ -47,4 +47,4 @@ Options:
     3: display snake game and graphs  
 
 Example:  
-python main.py -t -d 3 -e 0.99 -ed 0.991 -lr 0.0009 -ep 500 -s "./final1.pth" -hs 512 -bs 2500 -tu 200
+python3 main.py -t -d 3 -e 0.99 -ed 0.991 -lr 0.0009 -ep 500 -s "./final1.pth" -hs 512 -bs 2500 -tu 200
