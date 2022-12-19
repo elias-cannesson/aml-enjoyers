@@ -51,7 +51,6 @@ __all__ = ["ReplayBuffer", "Agent"]
 
 Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward', 'done'))
 
-
 class ReplayBuffer():
     def __init__(self, size: int) -> None:
         self.memory = deque([], maxlen=size)
@@ -79,20 +78,59 @@ class ReplayBuffer():
     def get(self):
         return self.memory
 
-# class PriorityReplayBuffer(ReplayBuffer):
-#     def __init__(self, size: int) -> None:
-#         self.memory = deque([], maxlen=size)
+class PriorityBuffer():
+    def __init__(self, size: int) -> None:
+        self.memory = deque([], maxlen=size)
+        self.priorities = deque([], maxlen=size)
+        self.eps = 0.001
+        self.alpha = 0.4
     
-#     # implement priority sampling
-#     def sample(
-#         self,
-#         batch_size: int
-#     ) -> Tuple:
-        
+    def add_experience(
+        self, 
+        state: Union[np.ndarray, torch.Tensor],
+        action: torch.Tensor,
+        next_state: Union[np.ndarray, torch.Tensor],
+        reward: torch.Tensor,
+        done: int
+    ):
+        self.memory.append(Transition(state, action, next_state, reward, done))
+        self.priorities.append( (abs(reward) + self.eps)**self.alpha ) # add priority
+    
+    def sample(
+        self,
+        batch_size: int
+    ) -> Tuple:
+        # pick a random number 0 <= s <= sum(priorities)
+        # and walk self.priority left to right,
+        # summing up a priority of the current element until the sum is exceeded
+        # and that element is chosen ot be in the batch
 
+        # get probabilities
+        p_sum = sum(self.priorities)
+
+        # walk left to right, summing up priorities
+        # until the sum is exceeded
+        j = 0
+        sample = []
+        for _ in range(batch_size):
+            # get random number
+            s = random.uniform(0, p_sum)
+            su = 0
+            for j in range(len(self.priorities)):
+                su += self.priorities[j]
+                if su >= s:
+                    break
+                # add to sample
+            sample.append(self.memory[j])
+        return sample
     
+    def __len__(self):
+        return len(self.memory)
     
-    
+    def get(self):
+        return self.memory
+
+
 # nn.Module class:
 # https://pytorch.org/docs/stable/generated/torch.nn.Module.html
 
@@ -189,8 +227,12 @@ class Agent:
         # Optimizer to update the weights of the local network via stochastic gradient descent
         self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=lr)
         
-        # Replay memory stores the experiences
-        self.memory = ReplayBuffer(memory_size)
+        self.PER = False
+        
+        if not self.PER:
+            self.memory = ReplayBuffer(memory_size)
+        else:
+            self.memory = PriorityBuffer(memory_size)
         self.t_step = 1
 
         self.loss = 0
@@ -241,7 +283,7 @@ class Agent:
                 experiences = self.memory.sample(self.batch_size)
                 self.learn_experiences_v2(experiences, self.batch_size)
 
-
+                
     def replay_experiences(
         self
     ): 
@@ -314,8 +356,8 @@ class Agent:
         
         next_state_values = torch.zeros(batch_size).to(self.device) # initialize to zeros 
         # (non-final next states will be updated)
-
-        next_state_values[non_final_mask] = torch.max(next_q_values, dim=1)[0] 
+        next_state_values[non_final_mask] = torch.max(next_q_values, dim=1)[0]
+        
 
         max_expected_state_action_values = next_state_values * self.gamma
         max_expected_state_action_values = max_expected_state_action_values + rewards
@@ -355,6 +397,15 @@ class Agent:
         done: int
     ):
         self.memory.add_experience(state, action, next_state, reward, done)
+
+    
+    # def get_q_values(
+    #     self,
+    #     states: torch.Tensor,
+    #     actions: torch.Tensor,
+    #     rewardS: torch.Tensor,
+    #     done: torch.Tensor
+    # ):
 
 
 

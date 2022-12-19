@@ -1,44 +1,3 @@
-"""
-Deep Q Learning with PyTorch
-
-Snake Game
-
-Learning Algorithm: Deep Q Learning
-
-First, we will initialize the replay memory capacity and the batch size.
-Then, we will initialize the discount factor γ.
-We will initialize the final value of ε and the rate at which we want to decrease ε.
-We will also initialize the number of steps to copy the parameters of our Q-network 
-to the target Q-network.
-
-Then, we will initialize the two Q-networks and the optimizer.
-We will also initialize the two states s and s′, the action a, the reward r,
-and the final state s′.
-
-For each step of the episode, we will select an action a using the ε-greedy policy.
-We will execute this action in the environment and observe the reward r and the next state s′.
-
-We will store the transition (s, a, r, s′) in the replay memory.
-Then, we will sample a random batch of transitions (s, a, r, s′) from the replay memory.
-
-We will set the target value for the Q-network as follows:
-    If the episode ends at step t + 1, then the target value is simply the reward r.
-    Otherwise, the target value is r + γ * maxa′Q(s′, a′; θ′).
-
-We will set the loss as the mean squared error between the Q-network and the target value.
-We will perform a gradient descent step to minimize this loss.
-
-We will update the parameters of the target Q-network every C steps.
-
-Finally, we will decrease the value of ε.
-
-After training, we will save the parameters of the Q-network.
-
-Note: The target Q-network is used to compute the target value.
-
-"""
-
-
 import os
 import sys
 from traceback import format_exc
@@ -66,8 +25,8 @@ from snake import Snake
 from learn import *
 
 
-# if gpu is to be used
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# # if gpu is to be used
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 WHITE = (255, 255, 255)
@@ -91,7 +50,7 @@ BOUNDS = (1000, 800)
 WIDTH = BOUNDS[0]
 HEIGHT = BOUNDS[1]
 
-BATCH_SIZE = 1000
+BATCH_SIZE = 2500
 GAMMA = 0.99
 
 EPS_STEPS = 200
@@ -99,17 +58,18 @@ EPS_STEPS = 200
 EPS_START = 0.99
 EPS_END = 0.0001
 EPS_DECAY = 0.992
-TARGET_UPDATE = 200
-LR = 0.001
-LR_DECAY = 0.999
-LR_MIN = 0.0001
+TARGET_UPDATE = 200 
+LR = 0.0009
+PER = False
+ALPHA = 0.5 # controls how much prioritization is used
+PER_EPS = 0.01 # small amount to add to the TD errors when updating priorities
 
 MEMORY_SIZE = 300000
-EPOCHS = 600
+EPOCHS = 500
 
 ACTION_SIZE = 3
 STATE_SIZE = 11
-HIDDEN_SIZE = 256
+HIDDEN_SIZE = 512
 # STATE_SIZE = 11 + (WIDTH // BLOCK_SIZE) * (HEIGHT // BLOCK_SIZE)
 # STATE_SIZE = 7
 
@@ -197,8 +157,8 @@ def train(
         snake_skeleton = Snake(w=WIDTH,h=HEIGHT, color=RED,
                                 csize=BLOCK_SIZE) 
         
-        of_interest = ["Score", "Epsilon", "Loss", "Steps", "Rewards"]
-        dims = [100, 1, 2, 10, 1500, 1000]
+        of_interest = ["Score", "Epsilon", "Loss", "Rewards"] # ["Score", "Epsilon", "Loss", "Steps", "Rewards"]
+        dims = [100, 1, 2, 1000]
         l_oi = len(of_interest)
 
         if d >= 2 or not d:
@@ -224,7 +184,7 @@ def train(
             steps = 0
             while True:
                 if d == 1 or d == 3:
-                    # pygame.time.delay(800)
+                    pygame.time.delay(50)
                     for event in pygame.event.get():
                         if event.type == pygame.QUIT:
                             pygame.quit()
@@ -256,7 +216,7 @@ def train(
                     agent.replay_experiences()
                     if score > max_score:
                         max_score = score
-                        agent.save_model('./snake.pth')
+                        agent.save_model(MODEL_PATH)
                     break
                 
                 score = snake_skeleton.get_score()
@@ -279,7 +239,7 @@ def train(
             if max_score == 100:
                 break
 
-            # if epoch == 300:
+            # if epoch == 400:
             #     d = 3
             #     window = pygame.display.set_mode(BOUNDS)
             #     pygame.display.set_caption("Snake")
@@ -308,8 +268,8 @@ def train(
                 ax[0].plot(epoch, score, 'ro', markersize=1)
                 ax[1].plot(epoch, agent.epsilon, 'bo', markersize=1)
                 ax[2].plot(epoch, agent.loss, 'go', markersize=1)
-                ax[3].plot(epoch, steps, 'yo', markersize=1)
-                ax[4].plot(epoch, total_reward, 'co', markersize=1)
+                #ax[3].plot(epoch, steps, 'yo', markersize=1)
+                ax[3].plot(epoch, total_reward, 'co', markersize=1)
                 plt.show()
             elif d == 1:
                 window.fill((10, 10, 10))
@@ -322,8 +282,8 @@ def train(
                 ax[0].plot(epoch, score, 'ro', markersize=1)
                 ax[1].plot(epoch, agent.epsilon, 'bo', markersize=1)
                 ax[2].plot(epoch, agent.loss, 'go', markersize=1)
-                ax[3].plot(epoch, steps, 'yo', markersize=1)
-                ax[4].plot(epoch, total_reward, 'co', markersize=1)
+                # ax[3].plot(epoch, steps, 'yo', markersize=1)
+                ax[3].plot(epoch, total_reward, 'co', markersize=1)
                 if d == 2:
                     plt.show()
 
@@ -433,7 +393,9 @@ def print_program_usage():
     print("Usage: python snake.py [-t|-l|-p] [-d 0|1|2|3] [-s model_path] \n"
           "[-e (value btwn 0 and 1)] [-ed (value btwn 0 and 1)] [-lr (value btwn 0 and 1)]\n"
           "[-ep (epochs for training: any positive integer)] [-hs (hidden size)]\n"
-          "[-g (gamma / discount-factor for future actions)] [-bs (batch size of training data)]")
+          "[-g (gamma / discount-factor for future actions)] [-bs (batch size of training data)]\n"
+          "[-tu (target update, must be int greater than 0)] [-PER (use prioritized experience replay)]\n")
+
     print("Options:")
     print("-t: train model")
     print("-l: load model")
@@ -447,6 +409,8 @@ def print_program_usage():
     print(f"-hs: hidden size (any positive integer) (default is {HIDDEN_SIZE})")
     print(f"-g: gamma (float between 0 and 1) (default is {GAMMA})")
     print(f"-bs: batch size (any positive integer) (default is {BATCH_SIZE})")
+    print(f"-tu: target update (any positive integer) (default is {TARGET_UPDATE})")
+    print("-PER: use prioritized experience replay")
 
     print("-d: display mode")
     print("0: no display")
@@ -505,6 +469,10 @@ if __name__ == '__main__':
                     GAMMA = float(sys.argv[i + 1])
                 elif sys.argv[i] == '-bs':
                     BATCH_SIZE = int(sys.argv[i + 1])
+                elif sys.argv[i] == '-tu':
+                    TARGET_UPDATE = int(sys.argv[i + 1])
+                elif sys.argv[i] == '-PER':
+                    PER = True
             
             main(func=func, d=d, load_model=load_model, save_model=save_model)
 
