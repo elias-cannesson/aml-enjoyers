@@ -2,7 +2,7 @@
 ## Elias Cannesson, Austin Alcancia, Nghi Nguyen, Harsha Rauniyar
 
 # Summary
-This project delves into the exploration of the combination of neural networks from Machine Learning, and Q-learning (reinforcement learning) from the concepts of Artificial Intelligence and Game Theory. In this project, we use Deep Q Networks (DQN) to get a two dimensional snake game to play the game successfully. To this end, we developed a snake game in Python using pygame, and made use of Deep Q networks to train an agent to play the game by itself by learning from past experience. We explore the performance of a trained agent ( the snake) playing the original game. 
+This project delves into the exploration of the combination of neural networks from Machine Learning, and Q-learning (reinforcement learning) from the concepts of Artificial Intelligence and Game Theory. In this project, we use Deep Q Networks (DQN) to get a two dimensional snake game to play the game successfully. To this end, we developed a snake game in Python using pygame, and made use of Deep Q networks to train an agent to play the game by itself by learning from past experience. We explore the performance of a trained agent ( the snake) playing the original game using our DQN algorithm. We then conduct some experiments on the different variables available(learning rate, discount rate, epsilon decay) to find out cases where the agent performs the best.
 
 # How to run the program
 Simply clone the repository, and run the following command according to the command manual to run the program.  
